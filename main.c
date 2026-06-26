@@ -52,7 +52,6 @@ Sphere spheres[] = {
 };
 
 V3 canvasToViewport(float x, float y){
-  // TODO
   V3 result = {0};
   result.x = x * viewportSize.x / WIDTH;
   result.y = y * viewportSize.y / HEIGHT;
@@ -130,8 +129,6 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
   return DEFAULT_COLOR;
 }
 
-
-//
 void setPixelTexture(float x, float y, V3 color){
   int byteOffset = (x + WIDTH * y) * 3;
   buffer[byteOffset+0] = color.x;
@@ -142,11 +139,12 @@ void setPixelTexture(float x, float y, V3 color){
 void setPixelCanvas(float x, float y, V3 color){
   // in x - in Canvas space - w/2 to w/2
   // out x - texture coords  0 to w
-  setPixelTexture( x+WIDTH/2, y+HEIGHT/2, color);
-}
 
-//figure out where to flip
-todo
+  // in y - in Canvas space  [h/2 (top) , -h/2(bot)]
+  // by - HEIGHT/2   [ 0 , -h]
+  // and *-1 [0, h] according to texture space
+  setPixelTexture( x+WIDTH/2, -(y-HEIGHT/2), color);
+}
 
 
 int main(int argc, char** argv){
@@ -157,15 +155,15 @@ int main(int argc, char** argv){
   int bottomEdge = - heightPixel/2;
   int topEdge =  heightPixel/2;
   
-  int leftEdge = -widthPixel/2;
+  int leftEdge = - widthPixel/2;
   int righEdge = widthPixel/2;
 
   int index =0;
   V3 d, color;
   V3 o = {0};
-  for( float y = bottomEdge; y < topEdge; y++){
+  for( int y = topEdge; y > bottomEdge; y--){
     index =0;
-    for ( float x = leftEdge; x < righEdge; x++){
+    for ( int x = leftEdge; x < righEdge; x++){
 
       /* V3 color = { index % 255, 0, 0 }; */
       /* setPixelCanvas(i,j, color); */
