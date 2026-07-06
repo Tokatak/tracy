@@ -48,6 +48,12 @@ typedef struct{
   float t2;
 } RaySphereIntersection;
 
+typedef struct{
+  Sphere* sphere;
+  float distance;
+} ClosestIntersection;
+// todo: better naming
+
 typedef enum {AMBIENT, POINT, DIRECTIONAL} LIGHT_TYPE;
 
 typedef struct{
@@ -114,6 +120,48 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   return result;
 }
 
+// todo: better naming
+ClosestIntersection intersectClosest(V3 O, V3 D,  float t_min, float t_max){
+  ClosestIntersection result = {0};
+
+  float closest_t = INFINITY;
+  Sphere* closest_sphere = NULL; 
+
+  RaySphereIntersection hit;
+  for ( int i=0; i< ARRAY_SIZE(spheres); i++){
+    hit = intersectRaySphere( O, D, spheres[i]);
+
+    if ( hit.count == 0){
+      continue;
+    }
+
+    if ( hit.count == 1){
+      if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
+	closest_t = hit.t1;
+	closest_sphere = &spheres[i];
+      }
+      continue;
+    }
+
+
+    if( hit.count ==2 ){
+      if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
+	closest_t = hit.t1;
+	closest_sphere = &spheres[i];
+      }
+
+      if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
+	closest_t = hit.t2;
+	closest_sphere = &spheres[i];
+      } 
+    }
+  }
+
+  result.distance = closest_t;
+  result.sphere = closest_sphere;
+  return result;
+}
+
 float ComputeLighting(V3 P, V3 N, V3 View, float s){
   float intensity = 0.0;
   V3 L;
@@ -121,24 +169,33 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
 
   for( int i =0; i< ARRAY_SIZE(lights); i++){
     Light l = lights[i];
-    
+
     if (l.type == AMBIENT){
       intensity += l.intensity;
       continue;
     }
 
+    float t_max;
     if ( l.type == POINT ){
       // todo: v3.sub
       L.x = l.position.x - P.x;
       L.y = l.position.y - P.y;
       L.z = l.position.z - P.z;
+      t_max = 1;
     } else { // DIRECTIONAL
       // todo: v3.set
       L.x = l.position.x;
       L.y = l.position.y;
       L.z = l.position.z;
+      t_max = INFINITY;
     }
 
+    ClosestIntersection intersection = intersectClosest(P, L, 0.001, t_max);
+    if( intersection.sphere != NULL ){
+      continue;
+    }
+
+    
     // DIFFUSE
     float nDotl = dot( N, L);
     if ( nDotl > 0 ){
@@ -163,38 +220,17 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
   return intensity;
 }
 
-
 V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
   V3 color = {0};
   float closest_t = INFINITY;
   Sphere *closestSphere = NULL;
   
-  RaySphereIntersection hit;
+  ClosestIntersection intersection = intersectClosest(O, D, t_min, t_max);
+  closestSphere = intersection.sphere;
+  closest_t = intersection.distance;
 
-  for (int i = 0; i < ARRAY_SIZE(spheres); i++){    
-    hit = intersectRaySphere(O, D, spheres[i]);
 
-    if( hit.count == 0 ) {
-      continue;
-    }
-
-    if( hit.count == 1 ){
-      if ( hit.t1 > t_min && hit.t1 < t_max && hit.t1< closest_t){
-	closest_t = hit.t1;
-	closestSphere = &spheres[i];
-      }
-    }
-
-    if( hit.count == 2 ){
-      if ( hit.t2 > t_min && hit.t2 < t_max && hit.t2< closest_t){
-	closest_t = hit.t2;
-	closestSphere = &spheres[i];
-      }
-    }
-
-  }
-
-  if( closestSphere==NULL){
+  if( closestSphere == NULL ){
     return DEFAULT_COLOR;
   }
   
