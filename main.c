@@ -40,6 +40,7 @@ typedef struct{
   float radius;
   V3 color;
   float specular;
+  float reflective;
 } Sphere;
 
 typedef struct{
@@ -67,10 +68,10 @@ V2 viewportSize = {1.0,1.0};
 float projectionPlane = 1.0;
 
 Sphere spheres[] = {
-  { 0, -1, 3,  1,  {255,   0,  0}, 500},
-  { 2,  0, 4,  1,  {  0,   0,255}, 500},
-  {-2,  0, 4,  1,  {  0, 255,  0}, 10 },
-  {0,-5001,0,5000, {255, 255,  0},1000},  
+  { 0, -1, 3,  1,  {255,   0,  0}, 500, 0.2},
+  { 2,  0, 4,  1,  {  0,   0,255}, 500, 0.3},
+  {-2,  0, 4,  1,  {  0, 255,  0}, 10 , 0.4},
+  {0,-5001,0,5000, {255, 255,  0},1000, 0.5},  
 };
 
 Light lights[]= {
@@ -162,6 +163,15 @@ ClosestIntersection intersectClosest(V3 O, V3 D,  float t_min, float t_max){
   return result;
 }
 
+V3 ReflectRay(V3 N, V3 R){
+  V3 result = {0};
+  float nDotl = dot(R,N);
+  result.x = 2*N.x*nDotl-R.x;
+  result.y = 2*N.y*nDotl-R.y;
+  result.z = 2*N.z*nDotl-R.z;
+  return result;
+}
+
 float ComputeLighting(V3 P, V3 N, V3 View, float s){
   float intensity = 0.0;
   V3 L;
@@ -204,11 +214,9 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
 
     // SPECULAR
     if ( s != -1){
-      
-      Reflection.x = 2*N.x*nDotl-L.x;
-      Reflection.y = 2*N.y*nDotl-L.y;
-      Reflection.z = 2*N.z*nDotl-L.z;
 
+      Reflection = ReflectRay(N,L);
+      
       float rDotV = dot( Reflection, View);
       if (rDotV >0){
 	intensity += l.intensity * pow( rDotV / (len(Reflection) * len(View)), s );
@@ -220,7 +228,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
   return intensity;
 }
 
-V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
+V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
   V3 color = {0};
   float closest_t = INFINITY;
   Sphere *closestSphere = NULL;
@@ -252,10 +260,10 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
   N.z = P.z - closestSphere->centerZ;
 
 
-  V3 outColor;
-  outColor.x = closestSphere->color.x;
-  outColor.y = closestSphere->color.y;
-  outColor.z = closestSphere->color.z;
+  V3 local_color;
+  local_color.x = closestSphere->color.x;
+  local_color.y = closestSphere->color.y;
+  local_color.z = closestSphere->color.z;
 
   V3 V;
   // todo: negate;
@@ -265,11 +273,26 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
   V.z = -D.z;
   float light = ComputeLighting(P,N,V,closestSphere->specular);
 
-  outColor.x *= light;
-  outColor.y *= light;
-  outColor.z *= light;
+  local_color.x *= light;
+  local_color.y *= light;
+  local_color.z *= light;
   
-  return outColor;
+  /* return local_color; */
+
+  float reflective = closestSphere->reflective;
+  if ( recursion_depth <= 0 || reflective <=0 ){
+    return local_color;
+  }
+
+  // -D
+  V3 R = ReflectRay(N,V);
+  V3 reflected_color = traceRay(P, R, 0.001, INFINITY, recursion_depth-1);
+  V3 result;
+  result.x = local_color.x*(1-reflective) + reflected_color.x*reflective;
+  result.y = local_color.y*(1-reflective) + reflected_color.y*reflective;
+  result.z = local_color.z*(1-reflective) + reflected_color.z*reflective;
+  
+  return result;
 }
 
 void setPixelTexture(float x, float y, V3 color){
@@ -304,6 +327,7 @@ int main(int argc, char** argv){
   int index =0;
   V3 d, color;
   V3 o = {0};
+  int recursion_depth = 3;
   for( int y = topEdge; y > bottomEdge; y--){
     index =0;
     for ( int x = leftEdge; x < righEdge; x++){
@@ -311,7 +335,7 @@ int main(int argc, char** argv){
       /* V3 color = { index % 255, 0, 0 }; */
       /* setPixelCanvas(i,j, color); */
       d = canvasToViewport(x, y);
-      color = traceRay( o, d, 1, INFINITY);
+      color = traceRay( o, d, 1, INFINITY, recursion_depth);
       setPixelCanvas(x, y, color);
 
       index++;
