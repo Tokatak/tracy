@@ -39,6 +39,7 @@ typedef struct{
   float centerZ;
   float radius;
   V3 color;
+  float specular;
 } Sphere;
 
 typedef struct{
@@ -60,10 +61,10 @@ V2 viewportSize = {1.0,1.0};
 float projectionPlane = 1.0;
 
 Sphere spheres[] = {
-  { 0, -1, 3,  1,  {255,   0,  0}},
-  { 2,  0, 4,  1,  {  0,   0,255}},
-  {-2,  0, 4,  1,  {  0, 255,  0}},
-  {0,-5001,0,5000, {255, 255,  0}},  
+  { 0, -1, 3,  1,  {255,   0,  0}, 500},
+  { 2,  0, 4,  1,  {  0,   0,255}, 500},
+  {-2,  0, 4,  1,  {  0, 255,  0}, 10 },
+  {0,-5001,0,5000, {255, 255,  0},1000},  
 };
 
 Light lights[]= {
@@ -113,9 +114,10 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   return result;
 }
 
-float ComputeLighting(V3 P, V3 N){
+float ComputeLighting(V3 P, V3 N, V3 View, float s){
   float intensity = 0.0;
   V3 L;
+  V3 Reflection;
 
   for( int i =0; i< ARRAY_SIZE(lights); i++){
     Light l = lights[i];
@@ -137,10 +139,25 @@ float ComputeLighting(V3 P, V3 N){
       L.z = l.position.z;
     }
 
+    // DIFFUSE
     float nDotl = dot( N, L);
     if ( nDotl > 0 ){
       intensity += l.intensity * nDotl / (len(N) * len(L)) ;
-    }    
+    }
+
+    // SPECULAR
+    if ( s != -1){
+      
+      Reflection.x = 2*N.x*nDotl-L.x;
+      Reflection.y = 2*N.y*nDotl-L.y;
+      Reflection.z = 2*N.z*nDotl-L.z;
+
+      float rDotV = dot( Reflection, View);
+      if (rDotV >0){
+	intensity += l.intensity * pow( rDotV / (len(Reflection) * len(View)), s );
+      }
+    }
+    
   }
 
   return intensity;
@@ -177,47 +194,54 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
 
   }
 
+  if( closestSphere==NULL){
+    return DEFAULT_COLOR;
+  }
+  
   // no light 
   /* if(closestSphere!=NULL){ */
   /*   return closestSphere->color; */
   /* } */
-
-  // Lit
-  if( closestSphere!=NULL){
-    V3 P;
-    P.x = O.x + closest_t * D.x;
-    P.y = O.y + closest_t * D.y;
-    P.z = O.z + closest_t * D.z;
-
-    V3 N;
-    // todo: clean up centerX ...
-    N.x = P.x - closestSphere->centerX;
-    N.y = P.y - closestSphere->centerY;
-    N.z = P.z - closestSphere->centerZ;
-
-
-    V3 outColor;
-    outColor.x = closestSphere->color.x;
-    outColor.y = closestSphere->color.y;
-    outColor.z = closestSphere->color.z;
-
-    float light = ComputeLighting(P,N);
-
-    outColor.x *= light;
-    outColor.y *= light;
-    outColor.z *= light;
   
-    return outColor;
-  }
+  // Lit
+  V3 P;
+  P.x = O.x + closest_t * D.x;
+  P.y = O.y + closest_t * D.y;
+  P.z = O.z + closest_t * D.z;
 
-  return DEFAULT_COLOR;
+  V3 N;
+  // todo: clean up centerX ...
+  N.x = P.x - closestSphere->centerX;
+  N.y = P.y - closestSphere->centerY;
+  N.z = P.z - closestSphere->centerZ;
+
+
+  V3 outColor;
+  outColor.x = closestSphere->color.x;
+  outColor.y = closestSphere->color.y;
+  outColor.z = closestSphere->color.z;
+
+  V3 V;
+  // todo: negate;
+  // V from object to camera = -D from camera to object
+  V.x = -D.x;
+  V.y = -D.y;
+  V.z = -D.z;
+  float light = ComputeLighting(P,N,V,closestSphere->specular);
+
+  outColor.x *= light;
+  outColor.y *= light;
+  outColor.z *= light;
+  
+  return outColor;
 }
 
 void setPixelTexture(float x, float y, V3 color){
   int byteOffset = (x + WIDTH * y) * 3;
-  buffer[byteOffset+0] = color.x;
-  buffer[byteOffset+1] = color.y;
-  buffer[byteOffset+2] = color.z;  
+  // todo: better normalization
+  buffer[byteOffset+0] = color.x > 255 ? 255 : color.x;
+  buffer[byteOffset+1] = color.y > 255 ? 255 : color.y;
+  buffer[byteOffset+2] = color.z > 255 ? 255 : color.z;  
 }
 
 void setPixelCanvas(float x, float y, V3 color){
