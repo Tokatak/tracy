@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <assert.h> // todo: remove
 
 #define ARRAY_SIZE(arr)(sizeof(arr)/sizeof((arr)[0]))
 
@@ -8,7 +9,7 @@
 #define HEIGHT 480
 #define INFINITY 999999
 
-#define DEFAULT_COLOR (V3){255,255,255}
+#define DEFAULT_COLOR (V3){0,0,0}
 unsigned char buffer[WIDTH*HEIGHT*3] = { 0 };
 
 void save(unsigned char* buffer, int widthPixel, int heightPixel);
@@ -21,6 +22,10 @@ typedef struct{
 
 float dot(V3 a, V3 b){
   return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+
+float len(V3 v){
+  return sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
 typedef struct{
@@ -42,13 +47,29 @@ typedef struct{
   float t2;
 } RaySphereIntersection;
 
+typedef enum {AMBIENT, POINT, DIRECTIONAL} LIGHT_TYPE;
+
+typedef struct{
+  LIGHT_TYPE type;
+  float intensity;
+  V3 position;
+} Light;
+
+
 V2 viewportSize = {1.0,1.0};
 float projectionPlane = 1.0;
 
 Sphere spheres[] = {
   { 0, -1, 3,  1,  {255,   0,  0}},
   { 2,  0, 4,  1,  {  0,   0,255}},
-  {-2,  0, 4,  1,  {  0, 255,  0}}
+  {-2,  0, 4,  1,  {  0, 255,  0}},
+  {0,-5001,0,5000, {255, 255,  0}},  
+};
+
+Light lights[]= {
+  {AMBIENT, 0.2},
+  {POINT, 0.6, {2, 1, 0}},
+  {DIRECTIONAL, 0.2, {1,4,4}},
 };
 
 V3 canvasToViewport(float x, float y){
@@ -90,11 +111,45 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   }
 
   return result;
-}       
+}
+
+float ComputeLighting(V3 P, V3 N){
+  float intensity = 0.0;
+  V3 L;
+
+  for( int i =0; i< ARRAY_SIZE(lights); i++){
+    Light l = lights[i];
+    
+    if (l.type == AMBIENT){
+      intensity += l.intensity;
+      continue;
+    }
+
+    if ( l.type == POINT ){
+      // todo: v3.sub
+      L.x = l.position.x - P.x;
+      L.y = l.position.y - P.y;
+      L.z = l.position.z - P.z;
+    } else { // DIRECTIONAL
+      // todo: v3.set
+      L.x = l.position.x;
+      L.y = l.position.y;
+      L.z = l.position.z;
+    }
+
+    float nDotl = dot( N, L);
+    if ( nDotl > 0 ){
+      intensity += l.intensity * nDotl / (len(N) * len(L)) ;
+    }    
+  }
+
+  return intensity;
+}
+
 
 V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
   V3 color = {0};
-  float t_closest = INFINITY;
+  float closest_t = INFINITY;
   Sphere *closestSphere = NULL;
   
   RaySphereIntersection hit;
@@ -107,23 +162,52 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max ){
     }
 
     if( hit.count == 1 ){
-      if ( hit.t1 > t_min && hit.t1 < t_max && hit.t1< t_closest){
-	t_closest = hit.t1;
+      if ( hit.t1 > t_min && hit.t1 < t_max && hit.t1< closest_t){
+	closest_t = hit.t1;
 	closestSphere = &spheres[i];
       }
     }
 
     if( hit.count == 2 ){
-      if ( hit.t2 > t_min && hit.t2 < t_max && hit.t2< t_closest){
-	t_closest = hit.t2;
+      if ( hit.t2 > t_min && hit.t2 < t_max && hit.t2< closest_t){
+	closest_t = hit.t2;
 	closestSphere = &spheres[i];
       }
     }
 
   }
 
-  if(closestSphere!=NULL){
-    return closestSphere->color;
+  // no light 
+  /* if(closestSphere!=NULL){ */
+  /*   return closestSphere->color; */
+  /* } */
+
+  // Lit
+  if( closestSphere!=NULL){
+    V3 P;
+    P.x = O.x + closest_t * D.x;
+    P.y = O.y + closest_t * D.y;
+    P.z = O.z + closest_t * D.z;
+
+    V3 N;
+    // todo: clean up centerX ...
+    N.x = P.x - closestSphere->centerX;
+    N.y = P.y - closestSphere->centerY;
+    N.z = P.z - closestSphere->centerZ;
+
+
+    V3 outColor;
+    outColor.x = closestSphere->color.x;
+    outColor.y = closestSphere->color.y;
+    outColor.z = closestSphere->color.z;
+
+    float light = ComputeLighting(P,N);
+
+    outColor.x *= light;
+    outColor.y *= light;
+    outColor.z *= light;
+  
+    return outColor;
   }
 
   return DEFAULT_COLOR;
@@ -145,7 +229,6 @@ void setPixelCanvas(float x, float y, V3 color){
   // and *-1 [0, h] according to texture space
   setPixelTexture( x+WIDTH/2, -(y-HEIGHT/2), color);
 }
-
 
 int main(int argc, char** argv){
   int widthPixel = WIDTH;
