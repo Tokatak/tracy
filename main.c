@@ -296,10 +296,10 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
 
 void setPixelTexture(float x, float y, V3 color){
   int byteOffset = (x + WIDTH * y) * 3;
-  // todo: better normalization
-  buffer[byteOffset+0] = color.x > 255 ? 255 : color.x;
-  buffer[byteOffset+1] = color.y > 255 ? 255 : color.y;
-  buffer[byteOffset+2] = color.z > 255 ? 255 : color.z;  
+  // potential branchless operation 
+  buffer[byteOffset+0] = (unsigned char)fmaxf( 0.0, fminf( color.x, 255.0));
+  buffer[byteOffset+1] = (unsigned char)fmaxf( 0.0, fminf( color.y, 255.0));
+  buffer[byteOffset+2] = (unsigned char)fmaxf( 0.0, fminf( color.z, 255.0));
 }
 
 void setPixelCanvas(float x, float y, V3 color){
