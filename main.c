@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <math.h>
-#include <assert.h> // todo: remove
 
 #define ARRAY_SIZE(arr)(sizeof(arr)/sizeof((arr)[0]))
 
@@ -34,9 +33,7 @@ typedef struct{
 } V2;  
 
 typedef struct{
-  float centerX;
-  float centerY;
-  float centerZ;
+  V3 position;
   float radius;
   V3 color;
   float specular;
@@ -68,10 +65,11 @@ V2 viewportSize = {1.0,1.0};
 float projectionPlane = 1.0;
 
 Sphere spheres[] = {
-  { 0, -1, 3,  1,  {255,   0,  0}, 500, 0.2},
-  { 2,  0, 4,  1,  {  0,   0,255}, 500, 0.3},
-  {-2,  0, 4,  1,  {  0, 255,  0}, 10 , 0.4},
-  {0,-5001,0,5000, {255, 255,  0},1000, 0.5},  
+  //position
+  { {0,   -1, 3},    1, {255,   0,  0}, 500, 0.2},
+  { {2,    0, 4},    1, {  0,   0,255}, 500, 0.3},
+  { {-2,   0, 4},    1, {  0, 255,  0}, 10 , 0.4},
+  { {0,-5001, 0}, 5000, {255, 255,  0},1000, 0.5},  
 };
 
 Light lights[]= {
@@ -92,8 +90,9 @@ V3 canvasToViewport(float x, float y){
 RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   float r = sphere.radius;
   RaySphereIntersection result = {0};
+  V3 sphereCenter = sphere.position;
   
-  V3 CO = {O.x - sphere.centerX, O.y - sphere.centerY, O.z - sphere.centerZ };
+  V3 CO = {O.x - sphereCenter.x, O.y - sphereCenter.y, O.z - sphereCenter.z };
   float a = dot(D, D);
   float b = 2*dot(CO, D);
   float c = dot(CO, CO) - r*r;
@@ -255,9 +254,9 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
 
   V3 N;
   // todo: clean up centerX ...
-  N.x = P.x - closestSphere->centerX;
-  N.y = P.y - closestSphere->centerY;
-  N.z = P.z - closestSphere->centerZ;
+  N.x = P.x - closestSphere->position.x;
+  N.y = P.y - closestSphere->position.y;
+  N.z = P.z - closestSphere->position.z;;
 
 
   V3 local_color;
