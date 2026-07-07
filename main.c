@@ -19,6 +19,11 @@ typedef struct{
   float z;
 } V3;
 
+// V3
+// negate
+// set x y z
+// sub V3
+
 float dot(V3 a, V3 b){
   return a.x*b.x + a.y*b.y + a.z*b.z;
 }
@@ -27,10 +32,6 @@ float len(V3 v){
   return sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
-typedef struct{
-  float x;
-  float y;
-} V2;  
 
 typedef struct{
   V3 position;
@@ -56,7 +57,7 @@ typedef struct{
 } Light;
 
 
-V2 viewportSize = {1.0,1.0};
+V3 viewportSize = {1.0,1.0,0.0};
 float projectionPlane = 1.0;
 
 Sphere spheres[] = {
@@ -115,7 +116,6 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   return result;
 }
 
-// todo: better naming
 RaySphereIntersection intersectRaySphereClosest(V3 O, V3 D,  float t_min, float t_max){
   RaySphereIntersection result = {0};
 
