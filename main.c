@@ -20,18 +20,37 @@ typedef struct{
 } V3;
 
 // V3
-// negate
 // set x y z
-// sub V3
+// sub V3 
 
-float dot(V3 a, V3 b){
+V3 v3_negate(V3 v){
+  v.x=-v.x;
+  v.y=-v.y;
+  v.z=-v.z;
+  return v;
+}
+
+float v3_dot(V3 a, V3 b){
   return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-float len(V3 v){
+float v3_len(V3 v){
   return sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
+V3 v3_sub(V3 a, V3 b){
+  a.x -=b.x;
+  a.y -=b.y;
+  a.z -=b.z;
+  return a;
+}
+
+V3 v3_set(V3 source, V3 target){
+  target.x = source.x;
+  target.y = source.y;
+  target.z = source.z;
+  return target;
+}
 
 typedef struct{
   V3 position;
@@ -89,9 +108,9 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
   V3 sphereCenter = sphere.position;
   
   V3 CO = {O.x - sphereCenter.x, O.y - sphereCenter.y, O.z - sphereCenter.z };
-  float a = dot(D, D);
-  float b = 2*dot(CO, D);
-  float c = dot(CO, CO) - r*r;
+  float a = v3_dot(D, D);
+  float b = 2*v3_dot(CO, D);
+  float c = v3_dot(CO, CO) - r*r;
 
   float discriminant = b*b - 4*a*c;
   if( discriminant < 0 )
@@ -144,7 +163,7 @@ RaySphereIntersection intersectRaySphereClosest(V3 O, V3 D,  float t_min, float 
 
 V3 ReflectRay(V3 N, V3 R){
   V3 result = {0};
-  float nDotl = dot(R,N);
+  float nDotl = v3_dot(R,N);
   result.x = 2*N.x*nDotl-R.x;
   result.y = 2*N.y*nDotl-R.y;
   result.z = 2*N.z*nDotl-R.z;
@@ -166,16 +185,10 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
 
     float t_max;
     if ( l.type == POINT ){
-      // todo: v3.sub
-      L.x = l.position.x - P.x;
-      L.y = l.position.y - P.y;
-      L.z = l.position.z - P.z;
+      L = v3_sub(l.position, P);
       t_max = 1;
     } else { // DIRECTIONAL
-      // todo: v3.set
-      L.x = l.position.x;
-      L.y = l.position.y;
-      L.z = l.position.z;
+      L = v3_set(l.position, L);
       t_max = INFINITY;
     }
 
@@ -186,9 +199,9 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
 
     
     // DIFFUSE
-    float nDotl = dot( N, L);
+    float nDotl = v3_dot( N, L);
     if ( nDotl > 0 ){
-      intensity += l.intensity * nDotl / (len(N) * len(L)) ;
+      intensity += l.intensity * nDotl / (v3_len(N) * v3_len(L)) ;
     }
 
     // SPECULAR
@@ -196,9 +209,9 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
 
       Reflection = ReflectRay(N,L);
       
-      float rDotV = dot( Reflection, View);
+      float rDotV = v3_dot( Reflection, View);
       if (rDotV >0){
-	intensity += l.intensity * pow( rDotV / (len(Reflection) * len(View)), s );
+	intensity += l.intensity * pow( rDotV / (v3_len(Reflection) * v3_len(View)), s );
       }
     }
     
@@ -243,13 +256,9 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
   local_color.y = closestSphere->color.y;
   local_color.z = closestSphere->color.z;
 
-  V3 V;
-  // todo: negate;
-  // V from object to camera = -D from camera to object
-  V.x = -D.x;
-  V.y = -D.y;
-  V.z = -D.z;
-  float light = ComputeLighting(P,N,V,closestSphere->specular);
+  V3 v = v3_negate(D);
+  // v from object to camera = -D from camera to object
+  float light = ComputeLighting(P,N,v,closestSphere->specular);
 
   local_color.x *= light;
   local_color.y *= light;
@@ -263,7 +272,7 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
   }
 
   // -D
-  V3 R = ReflectRay(N,V);
+  V3 R = ReflectRay(N,v);
   V3 reflected_color = traceRay(P, R, 0.001, INFINITY, recursion_depth-1);
   V3 result;
   result.x = local_color.x*(1-reflective) + reflected_color.x*reflective;
