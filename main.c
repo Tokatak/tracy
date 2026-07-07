@@ -44,13 +44,8 @@ typedef struct{
   int count;
   float t1;
   float t2;
-} RaySphereIntersection;
-
-typedef struct{
   Sphere* sphere;
-  float distance;
-} ClosestIntersection;
-// todo: better naming
+} RaySphereIntersection;
 
 typedef enum {AMBIENT, POINT, DIRECTIONAL} LIGHT_TYPE;
 
@@ -121,43 +116,28 @@ RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere sphere){
 }
 
 // todo: better naming
-ClosestIntersection intersectClosest(V3 O, V3 D,  float t_min, float t_max){
-  ClosestIntersection result = {0};
+RaySphereIntersection intersectRaySphereClosest(V3 O, V3 D,  float t_min, float t_max){
+  RaySphereIntersection result = {0};
 
   float closest_t = INFINITY;
-  Sphere* closest_sphere = NULL; 
+  Sphere* closest_sphere = NULL;
 
   RaySphereIntersection hit;
   for ( int i=0; i< ARRAY_SIZE(spheres); i++){
     hit = intersectRaySphere( O, D, spheres[i]);
 
-    if ( hit.count == 0){
-      continue;
+    if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
+      closest_t = hit.t1;
+      closest_sphere = &spheres[i];
     }
 
-    if ( hit.count == 1){
-      if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
-	closest_t = hit.t1;
-	closest_sphere = &spheres[i];
-      }
-      continue;
-    }
-
-
-    if( hit.count ==2 ){
-      if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
-	closest_t = hit.t1;
-	closest_sphere = &spheres[i];
-      }
-
-      if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
-	closest_t = hit.t2;
-	closest_sphere = &spheres[i];
-      } 
-    }
+    if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
+      closest_t = hit.t2;
+      closest_sphere = &spheres[i];
+    } 
   }
 
-  result.distance = closest_t;
+  result.t1 = closest_t;
   result.sphere = closest_sphere;
   return result;
 }
@@ -199,7 +179,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s){
       t_max = INFINITY;
     }
 
-    ClosestIntersection intersection = intersectClosest(P, L, 0.001, t_max);
+    RaySphereIntersection intersection = intersectRaySphereClosest(P, L, 0.001, t_max);
     if( intersection.sphere != NULL ){
       continue;
     }
@@ -232,9 +212,9 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
   float closest_t = INFINITY;
   Sphere *closestSphere = NULL;
   
-  ClosestIntersection intersection = intersectClosest(O, D, t_min, t_max);
+  RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max);
   closestSphere = intersection.sphere;
-  closest_t = intersection.distance;
+  closest_t = intersection.t1;
 
 
   if( closestSphere == NULL ){
@@ -253,7 +233,6 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
   P.z = O.z + closest_t * D.z;
 
   V3 N;
-  // todo: clean up centerX ...
   N.x = P.x - closestSphere->position.x;
   N.y = P.y - closestSphere->position.y;
   N.z = P.z - closestSphere->position.z;;
@@ -296,7 +275,8 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth ){
 
 void setPixelTexture(float x, float y, V3 color){
   int byteOffset = (x + WIDTH * y) * 3;
-  // potential branchless operation 
+  // potential branchless operation
+  // clamp [0, 255]
   buffer[byteOffset+0] = (unsigned char)fmaxf( 0.0, fminf( color.x, 255.0));
   buffer[byteOffset+1] = (unsigned char)fmaxf( 0.0, fminf( color.y, 255.0));
   buffer[byteOffset+2] = (unsigned char)fmaxf( 0.0, fminf( color.z, 255.0));
