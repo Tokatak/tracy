@@ -1,4 +1,4 @@
-* TODO Split files
+* DONE Split files <2026-07-11 сб>
 * TODO Prepare win app for include raycaster
 * TODO Performance
 ** TODO threading
