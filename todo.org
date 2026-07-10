@@ -1,0 +1,18 @@
+* TODO Split files
+* TODO Prepare win app for include raycaster
+* TODO Performance
+** TODO threading
+** TODO bounding volume
+** TODO BVH
+** TODO caching
+* TODO Profile
+* TODO Expanding
+** TODO removing dependencies
+** TODO minimal build size
+** TODO supersamling
+** TODO downsampling
+** TODO shadow optimization?
+** TODO non sphere primitives
+** TODO block geometry
+** TODO transparency
+** TODO преломление
