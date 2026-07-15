@@ -1,11 +1,19 @@
 * DONE Split files <2026-07-11 сб>
-* TODO Prepare win app for include raycaster
+* DONE Prepare win app for include raycaster
+- <2026-07-11 сб>
+  created repo with default code
+- <2026-07-12 вс>
+  added performance counters
+- <2026-07-15 ср>
+  profiling app-window done
+* TODO Profile
+** Merge in profiling  
 * TODO Performance
-** TODO threading
 ** TODO bounding volume
 ** TODO BVH
 ** TODO caching
-* TODO Profile
+** TODO threading
+
 * TODO Expanding
 ** TODO removing dependencies
 ** TODO minimal build size
