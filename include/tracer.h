@@ -23,6 +23,17 @@ typedef struct{
 } Buffer;
 
 
+// centered zero
+// todo:  needs a better name
+typedef struct{
+  int top;
+  int bot;
+  int left;
+  int right;
+} Region;
+
+// todo: scene description
+
 V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount);
@@ -31,6 +42,11 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      Sphere* spheres, int sphereCount,
 		      Light* lights, int lightCount);
 
+void fillRegion( V3 origin, Region region, V3 viewportSize,
+		 float projectionPlane, Buffer buffer,
+		 float t_min, float t_max, int recursion_depth,
+		 Sphere* spheres, int sphereCount,
+		 Light* lights, int lightCount);
 #endif
 
 
