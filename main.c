@@ -1,8 +1,4 @@
-#include "include/ppm.h"
-#include "include/ray.h"
-#include "include/tracer.h"
-#include "include/utility.h"
-#include "include/v3.h"
+#include "tracer.h"
 #include <stdio.h>
 #include <windows.h> // PROFILE
 
@@ -17,6 +13,7 @@ int main(int argc, char **argv) {
       {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
   };
 
+  // todo: fix no ligth exception
   Light lights[] = {
     {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
     {LIGHT_POINT, 0.6, {2, 1, 0}},
