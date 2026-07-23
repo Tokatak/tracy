@@ -57,7 +57,9 @@ int main(int argc, char **argv) {
   QueryPerformanceCounter(&start);
   // profile
 
-  fillRegion( origin, region, viewportSize, projectionPlane, buffer,
+  V3 cameraDirection = { 0,0,1};
+
+  fillRegion( origin, cameraDirection ,region, viewportSize, projectionPlane, buffer,
 	      1, INFINITY, recursion_depth,
 	      spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
 	        

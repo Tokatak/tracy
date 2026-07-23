@@ -326,12 +326,12 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
 }
 
 
-void fillRegion( V3 origin, Region region, V3 viewportSize,float projectionPlane,
+void fillRegion
+( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
 		 Buffer buffer,
 		 float t_min, float t_max, int recursion_depth,
 		 Sphere* spheres, int sphereCount,
 		 Light* lights, int lightCount){
-
   int topEdge = region.top;
   int bottomEdge = region.bot;
 
@@ -398,7 +398,7 @@ void fillRegion( V3 origin, Region region, V3 viewportSize,float projectionPlane
 // win method for specific target buffer packing
 // 4 components, different ordering
 // 
-void fillRegionWin( V3 origin, Region region, V3 viewportSize,float projectionPlane,
+void fillRegionWin( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
 		 Buffer buffer,
 		 float t_min, float t_max, int recursion_depth,
 		 Sphere* spheres, int sphereCount,
@@ -418,6 +418,30 @@ void fillRegionWin( V3 origin, Region region, V3 viewportSize,float projectionPl
 
   unsigned char* bufferStart = buffer.start;
 
+
+  // Create a right vector (perpendicular to camera direction)
+  // Assuming Y is up
+  V3 up = {0, 1, 0};
+  V3 right;
+
+  // TODO: re-review
+  // cross
+  right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
+  right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
+  right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
+  
+  float rightLen = sqrtf(right.x*right.x + right.y*right.y + right.z*right.z);
+  if (rightLen > 0) {
+    right.x /= rightLen;
+    right.y /= rightLen;
+    right.z /= rightLen;
+  }
+  
+  V3 actualUp;
+  actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
+  actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
+  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
+  
   // NOTE:
   // tracer relies or rba pixel format 3 components
   // win expects 4 components
@@ -426,14 +450,38 @@ void fillRegionWin( V3 origin, Region region, V3 viewportSize,float projectionPl
   
   for (int y = topEdge; y > bottomEdge; y--) {
     for (int x = leftEdge; x < righEdge; x++) {
-      /* direction = canvasToViewport(x, y, buffer.width, buffer.height, */
-      /*                              viewportSize, projectionPlane); */
 
-      // canvasToViewport
-      direction.x = x * viewportSize.x / width;
-      direction.y = y * viewportSize.y / height;
-      direction.z = projectionPlane;
+      // x and y
+      //      height /2
+      //-width/2      width/2
+      //     -height /2
 
+      // vieport size currently 1, 1
+      // width and height are buffer size
+
+      // that makes direction
+      //      0.5
+      //-0.5      0.5
+      //     -0.5
+
+      // todo: review
+      // These are offsets from the center of the viewport
+      float viewportX = x * viewportSize.x / width;
+      float viewportY = y * viewportSize.y / height;
+      
+      // Transform viewport coordinates into world space using camera orientation
+      direction.x = cameraDirection.x * projectionPlane + right.x * viewportX + actualUp.x * viewportY;
+      direction.y = cameraDirection.y * projectionPlane + right.y * viewportX + actualUp.y * viewportY;
+      direction.z = cameraDirection.z * projectionPlane + right.z * viewportX + actualUp.z * viewportY;
+      
+      // Normalize direction
+      float dirLen = sqrtf(direction.x*direction.x + direction.y*direction.y + direction.z*direction.z);
+      if (dirLen > 0) {
+        direction.x /= dirLen;
+        direction.y /= dirLen;
+        direction.z /= dirLen;
+      }
+      
       
       color = traceRay(origin, direction, 1, BIG_NUMBER, recursion_depth,
 		       spheres,  sphereCount,
@@ -445,7 +493,6 @@ void fillRegionWin( V3 origin, Region region, V3 viewportSize,float projectionPl
       // in y - in Canvas space  [h/2 (top) , -h/2(bot)]
       // by - HEIGHT/2   [ 0 , -h]
       // and *-1 [0, h] according to texture space
-
 
       // todo: clenup this
       int columnOffsetPx = x + width / 2;
@@ -467,6 +514,8 @@ void fillRegionWin( V3 origin, Region region, V3 viewportSize,float projectionPl
     }
   }
 }
+
+
 
 
 
