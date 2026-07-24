@@ -353,6 +353,30 @@ void fillRegion
 
   unsigned char* bufferStart = buffer.start;
 
+  
+  // Create a right vector (perpendicular to camera direction)
+  // Assuming Y is up
+  V3 up = {0, 1, 0};
+  V3 right;
+
+  // TODO: re-review
+  // cross
+  right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
+  right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
+  right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
+  
+  float rightLen = sqrtf(right.x*right.x + right.y*right.y + right.z*right.z);
+  if (rightLen > 0) {
+    right.x /= rightLen;
+    right.y /= rightLen;
+    right.z /= rightLen;
+  }
+  
+  V3 actualUp;
+  actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
+  actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
+  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
+  
 
   for( int i=0; i< sphereCount; i++){
     float r = spheres[i].radius;
@@ -370,11 +394,36 @@ void fillRegion
       /* direction = canvasToViewport(x, y, buffer.width, buffer.height, */
       /*                              viewportSize, projectionPlane); */
 
-      // canvasToViewport
-      direction.x = x * viewportSize.x / width;
-      direction.y = y * viewportSize.y / height;
-      direction.z = projectionPlane;
+      // x and y
+      //      height /2
+      //-width/2      width/2
+      //     -height /2
 
+      // vieport size currently 1, 1
+      // width and height are buffer size
+
+      // that makes direction
+      //      0.5
+      //-0.5      0.5
+      //     -0.5
+
+      // todo: review
+      // These are offsets from the center of the viewport
+      float viewportX = x * viewportSize.x / width;
+      float viewportY = y * viewportSize.y / height;
+      
+      // Transform viewport coordinates into world space using camera orientation
+      direction.x = cameraDirection.x * projectionPlane + right.x * viewportX + actualUp.x * viewportY;
+      direction.y = cameraDirection.y * projectionPlane + right.y * viewportX + actualUp.y * viewportY;
+      direction.z = cameraDirection.z * projectionPlane + right.z * viewportX + actualUp.z * viewportY;
+      
+      // Normalize direction
+      float dirLen = sqrtf(direction.x*direction.x + direction.y*direction.y + direction.z*direction.z);
+      if (dirLen > 0) {
+        direction.x /= dirLen;
+        direction.y /= dirLen;
+        direction.z /= dirLen;
+      }
       
       color = traceRay(origin, direction, 1, BIG_NUMBER, recursion_depth,
 		       spheres,  sphereCount,
@@ -454,6 +503,11 @@ void fillRegionWin( V3 origin, V3 cameraDirection, Region region, V3 viewportSiz
   actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
   actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
   actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
+  
+  for( int i=0; i< sphereCount; i++){
+    float r = spheres[i].radius;
+    spheres[i]._rr = r*r;
+  }
   
   // NOTE:
   // tracer relies or rba pixel format 3 components
