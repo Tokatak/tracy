@@ -102,7 +102,6 @@ V3 ReflectRay(V3 N, V3 R){
 
 RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere){
   float rr = sphere->_rr;
-  float r = sphere->radius;
   RaySphereIntersection result = {0};
   V3 sphereCenter = sphere->position;
   
@@ -110,7 +109,7 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   float a = v3_dot(D, D);
   float a2 = 2*a;
   float b = 2*v3_dot(CO, D);
-  float c = v3_dot(CO, CO) - r;
+  float c = v3_dot(CO, CO) - rr;
 
   float discriminant = b*b - 4*a*c;
   float sqrtDiscriminant = sqrtf(discriminant);
