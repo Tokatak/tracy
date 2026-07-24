@@ -80,12 +80,13 @@ typedef struct{
   V3 color;
   float specular;
   float reflective;
+  float _rr; // r*r pre-storing
 } Sphere;
 
 typedef struct{
   float t1;
   float t2;
-  Sphere* sphere;
+  const Sphere* sphere;
 } RaySphereIntersection;
 
 
@@ -99,47 +100,54 @@ V3 ReflectRay(V3 N, V3 R){
 }
 
 
-RaySphereIntersection intersectRaySphere( V3 O, V3 D, Sphere* sphere){
+RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere){
+  float rr = sphere->_rr;
   float r = sphere->radius;
   RaySphereIntersection result = {0};
   V3 sphereCenter = sphere->position;
   
   V3 CO = {O.x - sphereCenter.x, O.y - sphereCenter.y, O.z - sphereCenter.z };
   float a = v3_dot(D, D);
+  float a2 = 2*a;
   float b = 2*v3_dot(CO, D);
-  float c = v3_dot(CO, CO) - r*r;
+  float c = v3_dot(CO, CO) - r;
 
   float discriminant = b*b - 4*a*c;
+  float sqrtDiscriminant = sqrtf(discriminant);
   if( discriminant < 0 )
     {
       return result;
     }
 
+  float sqrtDiscriminantDivA2 = sqrtDiscriminant /a2;
+  float minusBA2 = -b / a2;
+
   if( discriminant == 0 ){
-    result.t1 = (-b + sqrtf(discriminant)) / (2*a);
+    result.t1 = minusBA2 + sqrtDiscriminantDivA2;
     result.t2 = result.t1;
     return result;
   }
 
   if( discriminant > 0 ){
-    float sqrtdis = sqrtf(discriminant);
-    result.t1 = (-b + sqrtdis) / (2*a);
-    result.t2 = (-b - sqrtdis) / (2*a);
+    result.t1 = minusBA2 + sqrtDiscriminantDivA2;
+    result.t2 = minusBA2 - sqrtDiscriminantDivA2;
     return result;
   }
 
   return result;
 }
 
-RaySphereIntersection intersectRaySphereClosest(V3 O, V3 D,  float t_min, float t_max, Sphere* spheres, int sphereCount){
+RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const float t_min,
+						const float t_max,const  Sphere* restrict spheres,
+						const int sphereCount){
   RaySphereIntersection  result = {0};
 
   float closest_t = BIG_NUMBER;
-  Sphere* closest_sphere = NULL;
+  const Sphere* closest_sphere = NULL;
 
   RaySphereIntersection hit;
   for ( int i=0; i< sphereCount; i++){
-    Sphere* current = spheres+i;
+    const Sphere* current = spheres+i;
     hit = intersectRaySphere( O, D, current );
 
     if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
@@ -193,7 +201,7 @@ typedef struct{
 } Region;
 
 float ComputeLighting(V3 P, V3 N, V3 View, float s,
-		      Sphere* spheres, int sphereCount,
+		      const Sphere* spheres, int sphereCount,
 		      Light* lights, int lightCount){
   float intensity = 0.0;
   V3 L;
@@ -245,10 +253,10 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 
 // todo: scene description
  V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
-	     Sphere* spheres, int sphereCount,
+	     const Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount){
   float closest_t = BIG_NUMBER;
-  Sphere *closestSphere = NULL;
+  const Sphere *closestSphere = NULL;
   
   RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount);
   closestSphere = intersection.sphere;
@@ -346,6 +354,12 @@ void fillRegion
 
   unsigned char* bufferStart = buffer.start;
 
+
+  for( int i=0; i< sphereCount; i++){
+    float r = spheres[i].radius;
+    spheres[i]._rr = r*r;
+  }
+  
   // NOTE:
   // tracer relies or rba pixel format 3 components
   // win expects 4 components
