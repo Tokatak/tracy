@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   printf("FPS: %.2f\n", 1.0 / elapsed);
   // profile
 
-  //save(buffer.start, buffer.width, buffer.height, "out.ppm");
+  save(buffer.start, buffer.width, buffer.height, "out.ppm");
 
   free(buffer.start);
   return 0;
